@@ -45,13 +45,8 @@ def save_video():
         return
 
     # Define video codec and create VideoWriter object
-    if os_name == "Windows":
-        fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    if os_name == "Darwin":
-        fourcc = cv2.VideoWriter_fourcc(*'avc1')
-    if os_name == "Linux":
-        fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(f'output_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.mov', fourcc, 20.0, (640, 480))
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # MP4 format
+    out = cv2.VideoWriter(f'output_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.mp4', fourcc, 60.0, (640, 480))
 
     # Memory buffer for smoother recording
     frame_buffer = []
@@ -100,7 +95,7 @@ def generate_frames():
             break
         else:
             # Invert the frame
-            frame = cv2.flip(frame, 1)  # Flip both vertically and horizontally
+            frame = cv2.flip(frame, 1)  # Flip horizontally
 
             # Encode the inverted frame
             ret, buffer = cv2.imencode('.jpg', frame)
