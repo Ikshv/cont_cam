@@ -45,7 +45,12 @@ def save_video():
         return
 
     # Define video codec and create VideoWriter object
-    fourcc = cv2.VideoWriter_fourcc(*'avc1')  # H.264 codec for MOV format
+    if os_name == "Windows":
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    if os_name == "Darwin":
+        fourcc = cv2.VideoWriter_fourcc(*'avc1')
+    if os_name == "Linux":
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter(f'output_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.mov', fourcc, 20.0, (640, 480))
 
     # Memory buffer for smoother recording
