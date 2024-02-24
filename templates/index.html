@@ -1,21 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Streaming</title>
+    <title>Camera Stream Selector</title>
 </head>
 <body>
-    <h1>Video Streaming</h1>
-    <video width="640" height="480" controls autoplay>
-        <source src="{{ url_for('video') }}" type="multipart/x-mixed-replace">
-        Your browser does not support the video tag.
-    </video>
-    <form action="/start_recording" method="post">
-        <button type="submit">Start Recording</button>
+    <h1>Select a Camera to Start Streaming</h1>
+    <form action="/start_stream" method="post">
+        <select name="camera">
+            {% for index, name in cameras %}
+            <option value="{{ index }}">{{ name }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit">Start Streaming</button>
     </form>
-    <form action="/stop_recording" method="post">
-        <button type="submit">Stop Recording</button>
-    </form>
+    <iframe src="/video_feed" width="640" height="480"></iframe>
 </body>
 </html>
