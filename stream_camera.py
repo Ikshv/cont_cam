@@ -45,8 +45,8 @@ def save_video():
         return
 
     # Define video codec and create VideoWriter object
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # MP4 format
-    out = cv2.VideoWriter(f'output_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.mp4', fourcc, 60.0, (640, 480))
+    fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # MJPEG codec
+    out = cv2.VideoWriter(f'output_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.avi', fourcc, 20.0, (640, 480))
 
     # Memory buffer for smoother recording
     frame_buffer = []
