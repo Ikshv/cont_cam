@@ -1,100 +1,193 @@
-import time
-from flask import Flask, render_template, request, redirect, url_for, Response
-import subprocess
+from flask import Flask, Response
+from flask_httpauth import HTTPBasicAuth
 import cv2
+import platform
+import logging
+from logging.handlers import RotatingFileHandler
+import os
 
+# Initialize Flask application
 app = Flask(__name__)
+auth = HTTPBasicAuth()
 
-ffmpeg_process = None  # Global variable to manage FFmpeg process
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+handler = RotatingFileHandler('app.log', maxBytes=10000, backupCount=3)
+logger = logging.getLogger(__name__)
+logger.addHandler(handler)
 
-@app.route('/')
-def index():
-    """Render the main page with a list of detected cameras."""
-    cameras = detect_cameras()
-    return render_template('/index.html', cameras=cameras)
+# Dummy users dictionary - replace with a more secure method
+users = {
+    "u6b6u6": os.environ.get('TEST_USER_PASSWORD')  # Securely fetch the password from environment variables
+}
 
-@app.route('/start_stream', methods=['POST'])
-def start_stream():
-    global ffmpeg_process
-    if ffmpeg_process:
-        # Stop existing stream before starting a new one
-        ffmpeg_process.terminate()
-        ffmpeg_process = None
-
-    selected_camera = request.form.get('camera')
-    if selected_camera:
-        print(f"Selected camera: {selected_camera}")
-        ffmpeg_command = construct_ffmpeg_command(selected_camera)
-        print("FFmpeg command:", ffmpeg_command)
-        try:
-            ffmpeg_process = subprocess.Popen(ffmpeg_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            # Wait a bit and then check if the process is still running or if it exited with an error
-            time.sleep(2)
-            if ffmpeg_process.poll() is not None:
-                print("FFmpeg process ended prematurely with exit code:", ffmpeg_process.returncode)
-                stderr_output = ffmpeg_process.stderr.read().decode()
-                print("FFmpeg error output:", stderr_output)
-        except Exception as e:
-            print("Error starting FFmpeg process:", e)
-            ffmpeg_process = None
-
-        return redirect(url_for('index'))
-    else:
-        return "No camera selected", 400
-
-@app.route('/video_feed')
-def video_feed():
-    """Route to stream video from the currently selected camera."""
-    if ffmpeg_process is None:
-        return Response(status=500)
-    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
-
-def detect_cameras():
-    """Detects connected cameras and returns them as a list of tuples."""
-    cameras = []
-    for index in range(10):  # Arbitrary max index
-        cap = cv2.VideoCapture(index)
-        if cap.isOpened():
-            camera_name = f"Camera {index}"
-            cameras.append((index, camera_name))  # Add as a tuple
-            print(f"Detected camera: {camera_name}, Index: {index}")
-            cap.release()
-        else:
-            print(f"No camera detected at index {index}")
-    print(f"Number of cameras detected: {len(cameras)}")
-    return cameras
-
-
-def construct_ffmpeg_command(camera_index):
-    """Constructs the FFmpeg command based on the selected camera index."""
-    return [
-        'ffmpeg',
-        '-f', 'avfoundation',
-        '-i', str(camera_index),  # Camera index is used directly here
-        '-c:v', 'h264',
-        '-preset', 'ultrafast',
-        '-tune', 'zerolatency',
-        '-pix_fmt', 'yuv420p',
-        '-s', '640x480',
-        'pipe:1'
-    ]
+@auth.verify_password
+def verify_password(username, password):
+    if username in users:
+        return users.get(username) == password
+    return False
 
 def generate_frames():
-    """Yields frames from FFmpeg to the response."""
-    global ffmpeg_process
+    os_name = platform.system()
+    camera_index = 0
+    if os_name == "Windows":
+        cap = cv2.VideoCapture(camera_index)
+    elif os_name == "Darwin":
+        cap = cv2.VideoCapture(camera_index, cv2.CAP_AVFOUNDATION)
+    elif os_name == "Linux":
+        cap = cv2.VideoCapture(camera_index)
+
+    while True:
+        success, frame = cap.read()
+        if not success:
+            logger.error("Failed to capture video frame")
+            break
+        else:
+            ret, buffer = cv2.imencode('.jpg', frame)
+            frame = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+
+@app.route('/video')
+@auth.login_required
+def video():
+    logger.info("Video stream requested")
     try:
-        while True:
-            if ffmpeg_process.poll() is not None:
-                break
-            frame = ffmpeg_process.stdout.read(1024)
-            if not frame:
-                break
-            yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
     except Exception as e:
-        print("Error generating frames:", e)
-    finally:
-        if ffmpeg_process:
-            ffmpeg_process.terminate()
+        logger.error(f"Error serving video stream: {e}")
+        raise
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)
+
+
+# from flask import Flask, Response, request
+# from flask_httpauth import HTTPBasicAuth
+# import cv2
+# import platform
+# import logging
+# from logging.handlers import RotatingFileHandler
+# import os
+# import threading
+# import datetime
+
+# # Initialize Flask application
+# app = Flask(__name__)
+# auth = HTTPBasicAuth()
+
+# # Configure logging
+# logging.basicConfig(level=logging.INFO)
+# handler = RotatingFileHandler('app.log', maxBytes=10000, backupCount=3)
+# logger = logging.getLogger(__name__)
+# logger.addHandler(handler)
+
+# # Dummy users dictionary - replace with a more secure method
+# users = {
+#     "u6b6u6": os.environ.get('TEST_USER_PASSWORD')  # Securely fetch the password from environment variables
+# }
+
+# @auth.verify_password
+# def verify_password(username, password):
+#     if username in users:
+#         return users.get(username) == password
+#     return False
+
+# def save_video():
+#     os_name = platform.system()
+#     camera_index = 0
+#     if os_name == "Windows":
+#         cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
+#     elif os_name == "Darwin":
+#         cap = cv2.VideoCapture(camera_index, cv2.CAP_AVFOUNDATION)
+#     elif os_name == "Linux":
+#         cap = cv2.VideoCapture(camera_index)
+
+#     # Check if the camera is opened successfully
+#     if not cap.isOpened():
+#         logger.error("Failed to open camera for video recording")
+#         return
+
+#     # Define video codec and create VideoWriter object
+#     fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # MJPEG codec
+#     out = cv2.VideoWriter(f'output_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.avi', fourcc, 20.0, (640, 480))
+
+#     # Memory buffer for smoother recording
+#     frame_buffer = []
+
+#     while cap.isOpened():
+#         ret, frame = cap.read()
+#         if ret:
+#             # Compress frame and add to buffer
+#             ret, buffer = cv2.imencode('.jpg', frame)
+#             if ret:
+#                 frame_buffer.append(buffer)
+
+#             # Write frames from buffer to video file
+#             if len(frame_buffer) >= 10:  # Write every 10 frames
+#                 for buf in frame_buffer:
+#                     frame = cv2.imdecode(buf, cv2.IMREAD_COLOR)
+#                     out.write(frame)
+#                 frame_buffer = []
+
+#         else:
+#             break
+
+#     # Write remaining frames from buffer
+#     for buf in frame_buffer:
+#         frame = cv2.imdecode(buf, cv2.IMREAD_COLOR)
+#         out.write(frame)
+
+#     # Release resources
+#     cap.release()
+#     out.release()
+
+# def generate_frames():
+#     os_name = platform.system()
+#     camera_index = 0
+#     if os_name == "Windows":
+#         cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
+#     elif os_name == "Darwin":
+#         cap = cv2.VideoCapture(camera_index, cv2.CAP_AVFOUNDATION)
+#     elif os_name == "Linux":
+#         cap = cv2.VideoCapture(camera_index)
+
+#     while True:
+#         success, frame = cap.read()
+#         if not success:
+#             logger.error("Failed to capture video frame")
+#             break
+#         else:
+#             # Invert the frame
+#             frame = cv2.flip(frame, 1)  # Flip horizontally
+
+#             # Encode the inverted frame
+#             ret, buffer = cv2.imencode('.jpg', frame)
+#             if not ret:
+#                 logger.error("Failed to encode video frame")
+#                 break
+
+#             # Convert the frame to bytes and yield for streaming
+#             yield (b'--frame\r\n'
+#                    b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+
+#     # Release resources
+#     cap.release()
+
+
+# @app.route('/video')
+# @auth.login_required
+# def video():
+#     client_ip = request.remote_addr
+#     user_agent = request.headers.get('User-Agent')
+#     logger.info(f"Video stream requested by {client_ip} using {user_agent}")
+#     try:
+#         return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+#     except Exception as e:
+#         logger.error(f"Error serving video stream to {client_ip}: {e}")
+#         raise
+
+# if __name__ == '__main__':
+#     video_thread = threading.Thread(target=save_video)
+#     video_thread.start()
+#     app.run(host='0.0.0.0', port=5001, debug=True)
