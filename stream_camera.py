@@ -15,6 +15,8 @@ auth = HTTPBasicAuth()
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 handler = RotatingFileHandler('app.log', maxBytes=10000, backupCount=3)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s - %(html_content)s')
+handler.setFormatter(formatter)
 logger = logging.getLogger(__name__)
 logger.addHandler(handler)
 
@@ -60,7 +62,7 @@ def generate_frames():
 def video():
     client_ip = request.remote_addr
     user_agent = request.headers.get('User-Agent')
-    logger.info(f"Video stream requested by {client_ip} using {user_agent}")
+    logger.info(f"Video stream requested by {client_ip} using {user_agent}", extra={'html_content': 'Video streaming HTML'})
     try:
         return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
     except Exception as e:
@@ -70,7 +72,9 @@ def video():
 @app.route('/')
 @auth.login_required
 def index():
-    return render_template('/templates/index.html')
+    html_content = render_template('index.html')
+    logger.info('Rendering index page', extra={'html_content': html_content})
+    return html_content
 
 @app.route('/start_recording', methods=['POST'])
 def start_recording():
@@ -83,4 +87,4 @@ def stop_recording():
     return "Recording Stopped"
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001, debug=False)
+    app.run(host='0.0.0.0', port=5001, debug=True, threaded=True)
