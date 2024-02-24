@@ -30,9 +30,6 @@ def verify_password(username, password):
     return False
 
 def save_video():
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(f'output_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.avi', fourcc, 20.0, (640, 480))
-
     os_name = platform.system()
     camera_index = 0
     if os_name == "Windows":
@@ -42,13 +39,42 @@ def save_video():
     elif os_name == "Linux":
         cap = cv2.VideoCapture(camera_index)
 
+    # Check if the camera is opened successfully
+    if not cap.isOpened():
+        logger.error("Failed to open camera for video recording")
+        return
+
+    # Define video codec and create VideoWriter object
+    fourcc = cv2.VideoWriter_fourcc(*'avc1')  # H.264 codec for MOV format
+    out = cv2.VideoWriter(f'output_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.mov', fourcc, 20.0, (640, 480))
+
+    # Memory buffer for smoother recording
+    frame_buffer = []
+
     while cap.isOpened():
         ret, frame = cap.read()
         if ret:
-            out.write(frame)
+            # Compress frame and add to buffer
+            ret, buffer = cv2.imencode('.jpg', frame)
+            if ret:
+                frame_buffer.append(buffer)
+
+            # Write frames from buffer to video file
+            if len(frame_buffer) >= 10:  # Write every 10 frames
+                for buf in frame_buffer:
+                    frame = cv2.imdecode(buf, cv2.IMREAD_COLOR)
+                    out.write(frame)
+                frame_buffer = []
+
         else:
             break
 
+    # Write remaining frames from buffer
+    for buf in frame_buffer:
+        frame = cv2.imdecode(buf, cv2.IMREAD_COLOR)
+        out.write(frame)
+
+    # Release resources
     cap.release()
     out.release()
 
@@ -68,10 +94,22 @@ def generate_frames():
             logger.error("Failed to capture video frame")
             break
         else:
+            # Invert the frame
+            frame = cv2.flip(frame, 1)  # Flip both vertically and horizontally
+
+            # Encode the inverted frame
             ret, buffer = cv2.imencode('.jpg', frame)
-            frame = buffer.tobytes()
+            if not ret:
+                logger.error("Failed to encode video frame")
+                break
+
+            # Convert the frame to bytes and yield for streaming
             yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+
+    # Release resources
+    cap.release()
+
 
 @app.route('/video')
 @auth.login_required
