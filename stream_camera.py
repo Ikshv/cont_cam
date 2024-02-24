@@ -33,7 +33,7 @@ def save_video():
     os_name = platform.system()
     camera_index = 0
     if os_name == "Windows":
-        cap = cv2.VideoCapture(camera_index)
+        cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
     elif os_name == "Darwin":
         cap = cv2.VideoCapture(camera_index, cv2.CAP_AVFOUNDATION)
     elif os_name == "Linux":
@@ -82,7 +82,7 @@ def generate_frames():
     os_name = platform.system()
     camera_index = 0
     if os_name == "Windows":
-        cap = cv2.VideoCapture(camera_index)
+        cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
     elif os_name == "Darwin":
         cap = cv2.VideoCapture(camera_index, cv2.CAP_AVFOUNDATION)
     elif os_name == "Linux":
