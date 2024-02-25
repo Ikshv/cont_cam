@@ -29,55 +29,6 @@ def verify_password(username, password):
         return users.get(username) == password
     return False
 
-def save_video(camera_index):
-    # os_name = platform.system()
-    # if os_name == "Windows":
-    #     cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
-    # elif os_name == "Darwin":
-    #     cap = cv2.VideoCapture(camera_index, cv2.CAP_AVFOUNDATION)
-    # elif os_name == "Linux":
-    #     cap = cv2.VideoCapture(camera_index)
-
-    # if not cap.isOpened():
-    #     logger.error("Failed to open camera for video recording")
-    #     return
-
-    # # Define video codec and create VideoWriter object
-    # fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # MJPEG codec
-    # out = cv2.VideoWriter(f'output_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.avi', fourcc, 20.0, (640, 480))
-
-    # # Memory buffer for smoother recording
-    # frame_buffer = []
-
-    # while cap.isOpened():
-    #     ret, frame = cap.read()
-    #     frame = cv2.flip(frame, 1)  # Flip horizontally
-    #     if ret:
-    #         # Compress frame and add to buffer
-    #         ret, buffer = cv2.imencode('.jpg', frame)
-    #         if ret:
-    #             frame_buffer.append(buffer)
-
-    #         # Write frames from buffer to video file
-    #         if len(frame_buffer) >= 10:  # Write every 10 frames
-    #             for buf in frame_buffer:
-    #                 frame = cv2.imdecode(buf, cv2.IMREAD_COLOR)
-    #                 out.write(frame)
-    #             frame_buffer = []
-
-    #     else:
-    #         break
-
-    # # Write remaining frames from buffer
-    # for buf in frame_buffer:
-    #     frame = cv2.imdecode(buf, cv2.IMREAD_COLOR)
-    #     out.write(frame)
-
-    # # Release resources
-    # cap.release()
-    # out.release()
-    pass
-
 def generate_frames(camera_index):
     cap = cv2.VideoCapture(camera_index)
     if not cap.isOpened():
@@ -90,8 +41,11 @@ def generate_frames(camera_index):
             logger.error("Failed to capture video frame")
             break
         else:
-            # Encode the frame
-            ret, buffer = cv2.imencode('.jpg', frame)
+            # Resize frame to reduce bandwidth
+            frame = cv2.resize(frame, (480, 480))
+            frame = cv2.flip(frame, 1)  # Flip the frame horizontally
+            # Encode the frame with JPEG format and lower quality
+            ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 5])
             if not ret:
                 logger.error("Failed to encode video frame")
                 break
@@ -143,6 +97,4 @@ def list_cameras(max_attempts=10):
     return available_cameras
 
 if __name__ == '__main__':
-    video_thread = threading.Thread(target=save_video, args=(0,))
-    video_thread.start()
     app.run(host='0.0.0.0', port=5001, debug=True)
