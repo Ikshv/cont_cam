@@ -234,7 +234,6 @@ pyasn1==0.5.0
 pyasn1-modules==0.3.0
 PyAudio==0.2.13
 PyAutoGUI==0.9.53
-pycairo @ file:///private/tmp/py3cairo-20231211-33175-e8xwuk/pycairo-1.25.1
 pycparser==2.21
 pydub==0.25.1
 pyfakewebcam==0.1.0
@@ -426,7 +425,6 @@ pytweening==1.0.4
 pytz==2022.7.1
 pytz-deprecation-shim==0.1.0.post0
 pytzdata==2020.1
-PyYAML @ file:///private/tmp/pyyaml-20231018-5610-1rdh755/PyYAML-6.0.1
 pyzmq==25.0.0
 qiskit==0.46.0
 qiskit-aer==0.13.2
@@ -467,7 +465,6 @@ sortedcontainers==2.4.0
 sounddevice==0.4.6
 soundfile==0.12.1
 soupsieve==2.4
-spacetime @ file:///Users/isaacshvartsman/Desktop/untitled%20folder/ihml/packages/spacetime-2.1.1-py3-none-any.whl#sha256=6098adbff9fe0896709944c71d608adaf4a5e6fe270ab8971d90b9c64dda6c8f
 SQLAlchemy==1.4.46
 SQLAlchemy-JSONField==1.0.1.post0
 SQLAlchemy-Utils==0.40.0
